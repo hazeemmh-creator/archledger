@@ -1,0 +1,16 @@
+# Prevent uploading the private Python engine
+.venv/
+__pycache__/
+
+# Prevent uploading the actual live database (Maximum Security)
+*.db
+data/*.db
+
+# Prevent uploading private staff salary sheets and generated PDFs
+data/*.xlsx
+data/*.xls
+data/*.csv
+output/*.pdf
+
+# VS Code settings
+.vscode/

@@ -1,0 +1,49 @@
+import sqlite3
+
+def upgrade_database_with_vault():
+    """
+    Upgrades the existing database with the new Audit Vault 
+    and Header Mapping tables.
+    """
+    # Connects to your TRUE LIVE database 
+    conn = sqlite3.connect('payroll_vault.db')
+    cursor = conn.cursor()
+
+    # 1. Create the Mapping Table (The new Drawer for rules)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS header_mapping (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        messy_header TEXT UNIQUE NOT NULL,
+        clean_standard TEXT NOT NULL
+    );
+    """)
+
+    # 2. Create the Immutable Audit Vault (The Locked Safe)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS audit_vault (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        payroll_month TEXT,
+        payroll_year TEXT,
+        raw_json_data TEXT, 
+        upload_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # 3. Pre-load your existing coordinates into the database 
+    cursor.execute("SELECT COUNT(*) FROM header_mapping")
+    if cursor.fetchone()[0] == 0:
+        default_mappings = [
+            ("COOP 1 CONTR/SPEC SAVINGS", "Cooperative Society 1"),
+            ("COOP 2 CONTR/SPEC SAVINGS", "Cooperative Society 2"),
+            ("COOP. LOAN RECOVERY", "Cooperative Loan Recovery"),
+            ("TOTAL DEDUCTION", "Total Deduction"),
+            ("NET PAY", "Net Pay")
+        ]
+        cursor.executemany("INSERT INTO header_mapping (messy_header, clean_standard) VALUES (?, ?)", default_mappings)
+
+    conn.commit()
+    conn.close()
+    print("Gbosa! Database upgraded successfully. Vault and Mapping tables are ready.")
+
+if __name__ == "__main__":
+    upgrade_database_with_vault()
