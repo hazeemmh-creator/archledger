@@ -1,65 +1,79 @@
-import { redirect } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '../../lib/supabase/server'
+import { redirect } from 'next/navigation'
 
-export default function LoginPage() {
-  // This is a Next.js Server Action that securely handles the login request
+export default async function LoginPage() {
+  const supabase = await createClient()
+  
+  // If the chief is already logged in, skip this page
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) redirect('/')
+
   const signIn = async (formData: FormData) => {
     'use server'
     const email = formData.get('email') as string
     const password = formData.get('password') as string
     const supabase = await createClient()
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (error) {
-      // If login fails, it safely reloads the login page
-      return redirect('/login?error=true')
-    }
     
-    // If successful, it sends you to the secure dashboard
-    return redirect('/')
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (!error) redirect('/')
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
-      <div className="bg-white p-8 rounded-2xl shadow-md border border-slate-200 w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-slate-800">ArchLedger Gateway</h1>
-          <p className="text-sm text-slate-500 mt-2">Authorized personnel only</p>
+    <main className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6">
+      <div className="w-full max-w-md bg-white p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200">
+        
+        {/* Massive Centered Logo */}
+        <div className="flex justify-center mb-10">
+          <Image 
+            src="/logo.png" 
+            alt="Build-Crafts Innovations" 
+            width={400} 
+            height={150}
+            style={{ width: '260px', height: 'auto' }}
+            className="object-contain"
+            priority
+          />
         </div>
         
-        <form action={signIn} className="flex flex-col gap-5">
+        <h1 className="text-2xl font-extrabold text-slate-900 text-center mb-2">Command Center</h1>
+        <p className="text-slate-500 text-center mb-8 font-medium">Sign in to access your financial intelligence.</p>
+        
+        <form action={signIn} className="flex flex-col gap-6">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Email Address</label>
+            <label className="block text-sm font-bold text-slate-700 mb-1.5">Email Address</label>
             <input 
               type="email" 
               name="email" 
               required 
-              className="w-full p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-              placeholder="chief@haweaheritage.com"
+              className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none transition" 
+              placeholder="chief@buildcrafts.com"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
+            <label className="block text-sm font-bold text-slate-700 mb-1.5">Password</label>
             <input 
               type="password" 
               name="password" 
               required 
-              className="w-full p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+              className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none transition" 
               placeholder="••••••••"
             />
           </div>
           <button 
             type="submit" 
-            className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-slate-700 transition shadow-sm mt-2"
+            className="w-full bg-amber-500 text-slate-900 font-extrabold py-4 rounded-xl hover:bg-amber-600 transition shadow-sm mt-2 text-lg"
           >
-            Access Vault
+            Access System
           </button>
         </form>
+        
       </div>
+      
+      {/* Corporate Footer */}
+      <p className="text-slate-400 text-sm font-medium mt-8">
+        &copy; {new Date().getFullYear()} Build-Crafts Innovations Ltd. All rights reserved.
+      </p>
     </main>
   )
 }
