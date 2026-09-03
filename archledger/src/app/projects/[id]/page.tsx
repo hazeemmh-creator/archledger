@@ -13,20 +13,25 @@ export default async function ProjectLedgerPage({ params }: { params: Promise<{ 
   const { data: project, error } = await supabase.from('projects').select('*').eq('id', id).single()
   if (error || !project) redirect('/')
 
-  // Fetch all itemized financial records for this specific project
+  // Fetch all financial records and documents for this specific project
   const { data: expensesData } = await supabase.from('expenses').select('*').eq('project_id', id).order('created_at', { ascending: false })
   const { data: fundingData } = await supabase.from('funding_transactions').select('*').eq('project_id', id).order('created_at', { ascending: false })
   const { data: contributionsData } = await supabase.from('contributions').select('*').eq('project_id', id).order('created_at', { ascending: false })
+  const { data: documentsData } = await supabase.from('project_documents').select('*').eq('project_id', id).order('created_at', { ascending: false })
   
   const expenses = expensesData || []
   const funding = fundingData || []
   const contributions = contributionsData || []
+  const documents = documentsData || []
 
   const totalExpensed = expenses.reduce((sum, item) => sum + Number(item.amount), 0)
   const totalFunded = funding.reduce((sum, item) => sum + Number(item.amount), 0)
   const totalContributions = contributions.reduce((sum, item) => sum + Number(item.amount), 0)
   
   const availablePosition = (totalFunded + totalContributions) - totalExpensed
+  
+  // Basic Gross Calculation for the Engine
+  const grossProfit = totalFunded - totalExpensed
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 pb-12">
@@ -73,36 +78,37 @@ export default async function ProjectLedgerPage({ params }: { params: Promise<{ 
 
         {/* Ledger Actions */}
         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Ledger Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-10">
            <Link href={`/projects/${project.id}/funding/create`} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-300 transition flex items-center justify-between group">
              <div>
                <span className="text-emerald-700 font-bold block mb-1">Record Money In</span>
                <span className="text-xs text-slate-500 font-medium">Client capital</span>
              </div>
-             <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition">➕</div>
            </Link>
            <Link href={`/projects/${project.id}/contributions/create`} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-amber-300 transition flex items-center justify-between group">
              <div>
                <span className="text-amber-700 font-bold block mb-1">Log Contribution</span>
                <span className="text-xs text-slate-500 font-medium">Partner equity</span>
              </div>
-             <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-110 transition">🤝</div>
            </Link>
            <Link href={`/projects/${project.id}/expenses/create`} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-red-300 transition flex items-center justify-between group">
              <div>
                <span className="text-red-700 font-bold block mb-1">Log Money Out</span>
                <span className="text-xs text-slate-500 font-medium">Site expenses</span>
              </div>
-             <div className="h-10 w-10 rounded-full bg-red-50 flex items-center justify-center text-red-600 group-hover:scale-110 transition">➖</div>
+           </Link>
+           <Link href="/documents" className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-slate-400 transition flex items-center justify-between group">
+             <div>
+               <span className="text-slate-700 font-bold block mb-1">Upload Receipt</span>
+               <span className="text-xs text-slate-500 font-medium">Attach documents</span>
+             </div>
            </Link>
         </div>
 
-        {/* Itemized Audit Feeds */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* 1. Itemized Expenses (Dangote Cement, Security, Wages) */}
+        {/* Itemized Audit Feeds (RESTORED) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             <div>
-              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Itemized Expenses (Money Out)</h2>
+              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Itemized Expenses</h2>
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                  {expenses.length === 0 ? (
                    <div className="p-8 text-center text-slate-500 text-sm">No expenses recorded yet.</div>
@@ -122,7 +128,6 @@ export default async function ProjectLedgerPage({ params }: { params: Promise<{ 
               </div>
             </div>
 
-            {/* 2. Itemized Client Funding (Money In) */}
             <div>
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Client Funding Inflows</h2>
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -144,7 +149,6 @@ export default async function ProjectLedgerPage({ params }: { params: Promise<{ 
               </div>
             </div>
 
-            {/* 3. Itemized Partner Contributions (Equity) */}
             <div>
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Partner Contributions</h2>
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -165,7 +169,100 @@ export default async function ProjectLedgerPage({ params }: { params: Promise<{ 
                  )}
               </div>
             </div>
+        </div>
 
+        {/* Phase 4: Profit & Equity Engine UI Shell */}
+        <div className="mb-12">
+          <div className="flex justify-between items-end mb-4">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              ⚙️ Profit & Equity Engine 
+            </h2>
+            <span className="text-xs font-bold text-amber-800 bg-amber-100 border border-amber-200 px-3 py-1 rounded-full">
+              TESTING MODE - LOGIC INACTIVE
+            </span>
+          </div>
+          
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-8 border-b border-slate-100 bg-slate-50">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-slate-500 font-bold">Gross Project Profit</span>
+                <span className="text-xl font-extrabold text-slate-900">{formatNaira(grossProfit)}</span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium">Calculated as: Client Inflows minus Total Expenses</p>
+            </div>
+
+            <div className="p-8 border-b border-slate-100">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Statutory Tax Provisions</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100 opacity-75">
+                  <div>
+                    <span className="text-slate-700 font-bold block">Value Added Tax (VAT)</span>
+                    <span className="text-xs text-amber-600 font-medium">Pending FIRS Configuration</span>
+                  </div>
+                  <span className="font-bold text-slate-400">₦0.00</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100 opacity-75">
+                  <div>
+                    <span className="text-slate-700 font-bold block">Withholding Tax (WHT)</span>
+                    <span className="text-xs text-amber-600 font-medium">Pending Rate Verification</span>
+                  </div>
+                  <span className="font-bold text-slate-400">₦0.00</span>
+                </div>
+
+                <div className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100 opacity-75">
+                  <div>
+                    <span className="text-slate-700 font-bold block">Company Income Tax (CIT)</span>
+                    <span className="text-xs text-amber-600 font-medium">Pending Exemptions Review</span>
+                  </div>
+                  <span className="font-bold text-slate-400">₦0.00</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 bg-slate-900 text-white">
+               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Net Distributable Dividends</h3>
+               <div className="flex justify-between items-center p-4 bg-slate-800 rounded-xl border border-slate-700">
+                  <div>
+                    <span className="text-white font-bold block">Automated Partner Split</span>
+                    <span className="text-xs text-amber-400 font-medium">Module awaiting CRM Equity Mapping</span>
+                  </div>
+                  <span className="font-bold text-slate-400">N/A</span>
+                </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Phase 3: Live Document Vault Display */}
+        <div className="mb-12">
+          <div className="flex justify-between items-end mb-4">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Project Document Vault</h2>
+            <span className="text-xs font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded-full">{documents.length} Files Attached</span>
+          </div>
+          
+          {documents.length === 0 ? (
+            <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-300 text-center shadow-sm">
+              <p className="text-slate-500 font-medium">No receipts or invoices attached to this project yet.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {documents.map((doc) => (
+                <a 
+                  key={doc.id} 
+                  href={doc.file_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:border-amber-400 hover:shadow-md transition flex flex-col items-center text-center group"
+                >
+                  <div className="text-4xl mb-3 group-hover:scale-110 transition">
+                    {doc.file_type?.includes('image') ? '🖼️' : '📑'}
+                  </div>
+                  <p className="font-bold text-slate-900 text-sm truncate w-full" title={doc.file_name}>{doc.file_name}</p>
+                  <p className="text-xs text-slate-400 font-medium mt-1">{new Date(doc.created_at).toLocaleDateString()}</p>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
