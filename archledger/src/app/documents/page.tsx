@@ -1,31 +1,70 @@
+import { createClient } from '../../lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import UploadForm from './UploadForm'
 
-export default function DocumentsVaultPage() {
+export default async function DocumentsVaultPage() {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) redirect('/login')
+
+  const { data: projectsData } = await supabase
+    .from('projects')
+    .select('id, project_name')
+    .order('created_at', { ascending: false })
+  
+  const projects = projectsData || []
+
+  // Secure Server Action
+  const uploadDocument = async (formData: FormData) => {
+    'use server'
+    const supabase = await createClient()
+
+    const projectId = formData.get('project_id') as string
+    const description = formData.get('description') as string
+    const file = formData.get('document') as File
+
+    if (!file || file.size === 0) return
+
+    const fileExt = file.name.split('.').pop()
+    const uniqueFileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+    const filePath = `${projectId}/${uniqueFileName}`
+
+    const { error: uploadError } = await supabase.storage.from('documents').upload(filePath, file)
+    if (uploadError) {
+      console.error("Storage Error:", uploadError.message)
+      return
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(filePath)
+
+    const { error: dbError } = await supabase.from('project_documents').insert({
+      project_id: projectId,
+      file_name: description,
+      file_url: publicUrl,
+      file_type: file.type
+    })
+
+    if (!dbError) redirect(`/projects/${projectId}`)
+  }
+
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 pb-12">
-      <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-slate-400 hover:text-amber-600 transition font-medium text-sm flex items-center gap-1">
-              <span>←</span> Back to Command Center
-            </Link>
-            <div className="h-4 w-px bg-slate-200"></div>
-            <span className="font-bold text-slate-900">Document & Receipt Vault</span>
+    <main className="min-h-screen bg-slate-50 p-8 flex items-center justify-center">
+      <div className="w-full max-w-2xl bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-900">Document & Receipt Vault</h1>
+            <p className="text-sm text-slate-500 mt-1">Upload invoices, receipts, and compliance certificates.</p>
           </div>
+          <Link href="/" className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+            Cancel
+          </Link>
         </div>
-      </nav>
-
-      <div className="max-w-4xl mx-auto px-6 mt-16 text-center">
-        <div className="bg-white p-12 rounded-3xl border border-slate-200 shadow-sm">
-          <div className="text-5xl mb-4">📁</div>
-          <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Enterprise Document Vault</h1>
-          <p className="text-slate-500 font-medium max-w-lg mx-auto mb-8">
-            Phase 3 integration: Upload physical receipt scans, contractor invoices, and compliance certificates directly into project ledgers.
-          </p>
-          <div className="inline-block bg-amber-50 text-amber-800 font-bold px-5 py-3 rounded-xl border border-amber-200 text-sm">
-            🚧 Scheduled for deployment in the next architectural sprint.
-          </div>
-        </div>
+        
+        {/* Injecting our interactive Client Interface here */}
+        <UploadForm projects={projects} uploadAction={uploadDocument} />
+        
       </div>
     </main>
   )
