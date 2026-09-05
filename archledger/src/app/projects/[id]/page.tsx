@@ -10,6 +10,14 @@ export default async function ProjectLedgerPage({ params }: { params: Promise<{ 
   const { id } = await params
   const supabase = await createClient()
   
+  // Secure Server Action to destroy the session and redirect
+  const handleLogout = async () => {
+    'use server'
+    const authSupabase = await createClient()
+    await authSupabase.auth.signOut()
+    redirect('/login')
+  }
+  
   const { data: project, error } = await supabase.from('projects').select('*').eq('id', id).single()
   if (error || !project) redirect('/')
 
@@ -44,9 +52,18 @@ export default async function ProjectLedgerPage({ params }: { params: Promise<{ 
             <div className="h-4 w-px bg-slate-200"></div>
             <span className="font-bold text-slate-900 truncate max-w-[200px] md:max-w-md">{project.project_name}</span>
           </div>
-          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
-            🟢 {(project.status || 'DRAFT').toUpperCase()}
-          </span>
+          
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+              🟢 {(project.status || 'DRAFT').toUpperCase()}
+            </span>
+            {/* New Logout Button */}
+            <form action={handleLogout}>
+              <button type="submit" className="text-xs font-bold text-slate-500 hover:text-red-600 transition bg-slate-100 hover:bg-red-50 px-4 py-1.5 rounded-full border border-slate-200 shadow-sm">
+                Logout
+              </button>
+            </form>
+          </div>
         </div>
       </nav>
 
