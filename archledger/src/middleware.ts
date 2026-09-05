@@ -23,23 +23,29 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh user session if expired
   const { data: { user } } = await supabase.auth.getUser()
-
   const isLoginPage = request.nextUrl.pathname.startsWith('/login')
 
-  // 1. If user is NOT logged in and trying to access any page other than /login -> kick to /login
+  // 1. Unauthenticated user trying to access protected routes -> Redirect to login
   if (!user && !isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value)
+    })
+    return redirectResponse
   }
 
-  // 2. If user IS logged in and trying to visit /login -> bounce back to dashboard /
+  // 2. Authenticated user trying to visit login page -> Redirect to dashboard
   if (user && isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value)
+    })
+    return redirectResponse
   }
 
   return supabaseResponse
