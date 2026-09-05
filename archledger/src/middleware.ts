@@ -23,17 +23,20 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Refresh user session if expired
   const { data: { user } } = await supabase.auth.getUser()
 
-  // STRICT LOCK: If no user is logged in and they are not on the login page, kick them to /login
-  if (!user && !request.nextUrl.pathname.startsWith('/login')) {
+  const isLoginPage = request.nextUrl.pathname.startsWith('/login')
+
+  // 1. If user is NOT logged in and trying to access any page other than /login -> kick to /login
+  if (!user && !isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // ALREADY LOGGED IN: If they try to go back to the login page, push them to the dashboard
-  if (user && request.nextUrl.pathname === '/login') {
+  // 2. If user IS logged in and trying to visit /login -> bounce back to dashboard /
+  if (user && isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
@@ -42,7 +45,6 @@ export async function middleware(request: NextRequest) {
   return supabaseResponse
 }
 
-// Tell the bouncer to inspect every route EXCEPT background static files (images, icons, code chunks)
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
