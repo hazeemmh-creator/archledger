@@ -13,6 +13,14 @@ const formatNaira = (amount: number) => {
 export default async function DashboardPage() {
   const supabase = await createClient()
 
+  // Secure Server Action for Global Logout
+  const handleLogout = async () => {
+    'use server'
+    const authSupabase = await createClient()
+    await authSupabase.auth.signOut()
+    redirect('/login')
+  }
+
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) redirect('/login')
 
@@ -49,11 +57,18 @@ export default async function DashboardPage() {
               priority
             />
           </div>
-          <div className="flex items-center gap-6">
-            <span className="text-sm font-medium text-slate-400 hover:text-amber-600 cursor-pointer transition">🔔 Notifications</span>
+          
+          {/* Avatar and Global Logout Button */}
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-slate-400 hover:text-amber-600 cursor-pointer transition hidden sm:inline">🔔 Notifications</span>
             <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold border border-slate-300 shadow-sm">
               HM
             </div>
+            <form action={handleLogout}>
+              <button type="submit" className="text-xs font-bold text-slate-500 hover:text-red-600 transition bg-slate-100 hover:bg-red-50 px-4 py-1.5 rounded-full border border-slate-200 shadow-sm cursor-pointer">
+                Logout
+              </button>
+            </form>
           </div>
         </div>
       </nav>
