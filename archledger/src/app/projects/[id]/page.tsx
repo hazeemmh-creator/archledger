@@ -10,7 +10,7 @@ export default async function ProjectLedgerPage({ params }: { params: Promise<{ 
   const { id } = await params
   const supabase = await createClient()
   
-  // Secure Server Action to destroy the session and redirect
+  // Secure Server Action for Logout
   const handleLogout = async () => {
     'use server'
     const authSupabase = await createClient()
@@ -53,13 +53,13 @@ export default async function ProjectLedgerPage({ params }: { params: Promise<{ 
             <span className="font-bold text-slate-900 truncate max-w-[200px] md:max-w-md">{project.project_name}</span>
           </div>
           
+          {/* PERFECTION: Green Status Badge and Logout grouped strictly on the top right */}
           <div className="flex items-center gap-4">
             <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
               🟢 {(project.status || 'DRAFT').toUpperCase()}
             </span>
-            {/* New Logout Button */}
             <form action={handleLogout}>
-              <button type="submit" className="text-xs font-bold text-slate-500 hover:text-red-600 transition bg-slate-100 hover:bg-red-50 px-4 py-1.5 rounded-full border border-slate-200 shadow-sm">
+              <button type="submit" className="text-xs font-bold text-slate-500 hover:text-red-600 transition bg-slate-100 hover:bg-red-50 px-4 py-1.5 rounded-full border border-slate-200 shadow-sm cursor-pointer">
                 Logout
               </button>
             </form>
@@ -122,7 +122,7 @@ export default async function ProjectLedgerPage({ params }: { params: Promise<{ 
            </Link>
         </div>
 
-        {/* Itemized Audit Feeds (RESTORED) */}
+        {/* Itemized Audit Feeds */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             <div>
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Itemized Expenses</h2>
